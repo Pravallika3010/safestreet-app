@@ -72,24 +72,53 @@ def handle_options(path):
 app.config['SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-here')
 
 # Initialize MongoDB connection
-try:
-    # Get MongoDB connection string from environment variable
-    mongo_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
-    print(f"Connecting to MongoDB with URI: {mongo_uri}")
-    
-    # Connect with a timeout to ensure we can reach the server
-    client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
-    
-    # Force a connection to verify it works
-    client.admin.command('ping')
-    print("MongoDB server ping successful!")
-    
-    # Use the correct database name from MongoDB Atlas
-    db_name = 'SafeStreet'
-    db = client[db_name]
-    
-    # Create collections with explicit validation
-    if 'users' not in db.list_collection_names():
+def get_mongodb_client():
+    """Get MongoDB client connection."""
+    try:
+        # Use MongoDB_URI from environment variables
+        mongo_uri = os.environ.get('MONGODB_URI')
+        if not mongo_uri:
+            raise ValueError("MONGODB_URI environment variable is not set")
+            
+        print(f"Connecting to MongoDB with URI: {mongo_uri}")
+        
+        # Create MongoDB client with timeout settings
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        
+        # Test the connection
+        client.server_info()
+        print("Successfully connected to MongoDB")
+        return client
+    except Exception as e:
+        print(f"Error connecting to MongoDB: {str(e)}")
+        raise
+
+# Get MongoDB client connection
+client = get_mongodb_client()
+
+# Get the correct database name from MongoDB Atlas
+db_name = 'SafeStreet'
+db = client[db_name]
+
+# Create collections with explicit validation
+if 'users' not in db.list_collection_names():
+    print(f"Creating users collection in {db_name}")
+    db.create_collection('users')
+
+if 'images' not in db.list_collection_names():
+    print(f"Creating images collection in {db_name}")
+    db.create_collection('images')
+
+# Get references to collections
+users_collection = db['users']
+images_collection = db['images']
+
+# Create indexes for better performance
+users_collection.create_index('email', unique=True)
+images_collection.create_index('user_id')
+
+print(f"Successfully connected to MongoDB database: {db_name}!")
+print(f"Available collections: {db.list_collection_names()}")
         print(f"Creating users collection in {db_name}")
         db.create_collection('users')
     
