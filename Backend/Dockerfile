@@ -1,6 +1,9 @@
 FROM python:3.9-slim
 
-# Install system dependencies
+# Multi-stage build to reduce final image size
+FROM python:3.9-slim as builder
+
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     git \
     libgl1-mesa-glx \
@@ -12,20 +15,26 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Install minimal dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install pip dependencies with --no-cache-dir to reduce image size
+# Install pip dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install OpenCV with minimal dependencies
 RUN pip install --no-cache-dir opencv-python-headless
 
-# Copy application code
+# Copy the rest of the application
 COPY . .
+
+# Create final image
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy only necessary files from builder
+COPY --from=builder /app/requirements.txt .
+COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=builder /app/app.py .
+COPY --from=builder /app/predict /app/predict
 
 # Set environment variables
 ENV FLASK_APP=app.py

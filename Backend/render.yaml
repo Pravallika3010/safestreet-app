@@ -3,7 +3,7 @@ services:
     name: safestreet-backend
     env: python
     buildCommand: docker build -t safestreet-backend .
-    startCommand: python app.py
+    startCommand: gunicorn app:app --bind 0.0.0.0:5000 --workers 1 --timeout 120
     envVars:
       - key: MONGODB_URI
         fromService: safestreet-mongodb
@@ -11,7 +11,7 @@ services:
       - port: 5000
     healthCheckPath: /health
     autoDeploy: true
-    memory: 4096
+    memory: 8192
     cpu: 2
     disk: 10240
     
