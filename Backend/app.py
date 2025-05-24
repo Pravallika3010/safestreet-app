@@ -29,9 +29,15 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Import our prediction module
 from predict.predict import predict, get_detector, RoadDamageDetector
 
-# Initialize the road damage detector
-road_damage_detector = get_detector()
-print("Road damage detector initialized successfully")
+# Initialize the road damage detector only when needed
+def get_detector_instance():
+    if not hasattr(get_detector_instance, 'instance'):
+        get_detector_instance.instance = get_detector()
+        print("Road damage detector initialized successfully")
+    return get_detector_instance.instance
+
+# Lazy initialization - detector will be loaded on first request
+road_damage_detector = None
 
 # Load environment variables
 load_dotenv()
@@ -1190,5 +1196,7 @@ def serve_output(filename):
     return send_from_directory(output_dir, filename)
 
 if __name__ == '__main__':
-    print("Starting server on http://localhost:5001")
-    app.run(host='localhost', port=5001, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    host = os.environ.get('HOST', '0.0.0.0')
+    print(f"Starting server on {host}:{port}")
+    app.run(host=host, port=port, debug=False)
