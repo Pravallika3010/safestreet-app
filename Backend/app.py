@@ -125,11 +125,6 @@ try:
 except Exception as e:
     print(f"Failed to initialize MongoDB: {str(e)}")
     raise
-        print(f"Creating users collection in {db_name}")
-        db.create_collection('users')
-    
-    if 'images' not in db.list_collection_names():
-        print(f"Creating images collection in {db_name}")
         db.create_collection('images')
     
     # Get references to collections
