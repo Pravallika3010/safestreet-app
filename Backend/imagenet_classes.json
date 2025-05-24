@@ -1,0 +1,8 @@
+{
+    "0": "road",
+    "1": "highway",
+    "2": "street",
+    "3": "pavement",
+    "4": "sidewalk",
+    "5": "not_road"
+}

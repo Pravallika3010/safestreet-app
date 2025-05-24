@@ -1,0 +1,12 @@
+[build]
+  command = "CI=false npm run build"
+  publish = "Frontend/build"
+  base = "Frontend"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

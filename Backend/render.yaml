@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: safestreet-backend
+    env: python
+    buildCommand: docker build -t safestreet-backend .
+    startCommand: python app.py
+    envVars:
+      - key: MONGODB_URI
+        fromService: safestreet-mongodb
+    ports:
+      - port: 5000
+    healthCheckPath: /health
+    autoDeploy: true
+
+databases:
+  - type: mongodb
+    name: safestreet-mongodb
