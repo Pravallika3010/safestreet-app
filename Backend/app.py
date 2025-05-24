@@ -93,32 +93,38 @@ def get_mongodb_client():
         print(f"Error connecting to MongoDB: {str(e)}")
         raise
 
-# Get MongoDB client connection
-client = get_mongodb_client()
-
-# Get the correct database name from MongoDB Atlas
-db_name = 'SafeStreet'
-db = client[db_name]
-
-# Create collections with explicit validation
-if 'users' not in db.list_collection_names():
-    print(f"Creating users collection in {db_name}")
-    db.create_collection('users')
-
-if 'images' not in db.list_collection_names():
-    print(f"Creating images collection in {db_name}")
-    db.create_collection('images')
-
-# Get references to collections
-users_collection = db['users']
-images_collection = db['images']
-
-# Create indexes for better performance
-users_collection.create_index('email', unique=True)
-images_collection.create_index('user_id')
-
-print(f"Successfully connected to MongoDB database: {db_name}!")
-print(f"Available collections: {db.list_collection_names()}")
+# Initialize MongoDB connection
+try:
+    # Get MongoDB connection
+    client = get_mongodb_client()
+    
+    # Get the correct database name from MongoDB Atlas
+    db_name = 'SafeStreet'
+    db = client[db_name]
+    
+    # Create collections with explicit validation
+    if 'users' not in db.list_collection_names():
+        print(f"Creating users collection in {db_name}")
+        db.create_collection('users')
+    
+    if 'images' not in db.list_collection_names():
+        print(f"Creating images collection in {db_name}")
+        db.create_collection('images')
+    
+    # Get references to collections
+    users_collection = db['users']
+    images_collection = db['images']
+    
+    # Create indexes for better performance
+    users_collection.create_index('email', unique=True)
+    images_collection.create_index('user_id')
+    
+    print(f"Successfully connected to MongoDB database: {db_name}!")
+    print(f"Available collections: {db.list_collection_names()}")
+    
+except Exception as e:
+    print(f"Failed to initialize MongoDB: {str(e)}")
+    raise
         print(f"Creating users collection in {db_name}")
         db.create_collection('users')
     
