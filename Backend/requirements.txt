@@ -5,7 +5,7 @@ flask==2.2.5
 Werkzeug==2.2.3
 flask-cors==3.0.10
 python-dotenv==0.19.0
-pymongo==4.1.1
+pymongo[srv]==4.1.1
 PyJWT==2.8.0
 bcrypt==4.0.1
 requests==2.31.0
