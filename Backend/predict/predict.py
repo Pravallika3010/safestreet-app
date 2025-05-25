@@ -68,6 +68,10 @@ class RoadDamageDetector:
                 self.yolo_model = None
                 logger.warning("YOLOv8 model could not be loaded")
             
+            # Skip loading multiclass model to reduce memory usage
+            logger.info("Skipping multiclass model to reduce memory usage")
+            self.multiclass_model = None
+            
             # Load ViT model only if YOLOv8 was loaded successfully
             if self.yolo_model:
                 logger.info(f"Loading ViT model from {VIT_MODEL_PATH}")
@@ -75,79 +79,37 @@ class RoadDamageDetector:
                     import timm
                     logger.info("Using timm to create ViT model with 1 output class")
                     self.vit_model = timm.create_model('vit_base_patch16_224', pretrained=False, num_classes=1)
-                if not MULTICLASS_MODEL_PATH.exists():
-                    logger.warning(f"Multiclass model file not found at {MULTICLASS_MODEL_PATH}")
-                    logger.warning("Creating a mock multiclass model for testing")
                     
-                    # Create a mock model that always returns pothole with high confidence
-                    class MockMulticlassModel(torch.nn.Module):
-                        def __init__(self):
-                            super().__init__()
-                            # Just a dummy layer that we won't actually use
-                            self.linear = torch.nn.Linear(3 * 224 * 224, 2)
-                            # Store the device
-                            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                        
-                        def forward(self, x):
-                            # Always return a tensor with higher probability for class 0 (pothole)
-                            batch_size = x.shape[0]
-                            # Return logits where class 0 (pothole) has higher value than class 1 (crack)
-                            return torch.tensor([[2.0, 1.0]] * batch_size, device=self.device)
-                    
-                    self.multiclass_model = MockMulticlassModel().to(self.device)
-                    logger.warning("Using mock multiclass model that always predicts 'pothole'")
-                else:
-                    # Create a multiclass model with the same architecture but multiple output classes
-                    self.multiclass_model = timm.create_model('vit_base_patch16_224', pretrained=False, num_classes=2)  # 2 classes: pothole and crack
-                    
+                    # Load ViT model weights
                     try:
-                        # Load the state dict
-                        logger.info(f"Loading multiclass model weights from {MULTICLASS_MODEL_PATH}")
-                        self.multiclass_model.load_state_dict(torch.load(MULTICLASS_MODEL_PATH, map_location=self.device))
-                        logger.info("Successfully loaded multiclass model weights")
+                        self.vit_model.load_state_dict(torch.load(VIT_MODEL_PATH, map_location=self.device))
+                        logger.info("Successfully loaded ViT model weights")
                     except Exception as e:
-                        logger.error(f"Error loading multiclass model weights: {e}")
-                        
-                        # Create a mock model for testing if loading fails
-                        logger.warning("Creating a mock multiclass model for testing")
-                        class MockMulticlassModel(torch.nn.Module):
-                            def __init__(self):
-                                super().__init__()
-                                # Just a dummy layer that we won't actually use
-                                self.linear = torch.nn.Linear(3 * 224 * 224, 2)
-                                # Store the device
-                                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                            
-                            def forward(self, x):
-                                # Always return a tensor with higher probability for class 0 (pothole)
-                                batch_size = x.shape[0]
-                                # Return logits where class 0 (pothole) has higher value than class 1 (crack)
-                                return torch.tensor([[2.0, 1.0]] * batch_size, device=self.device)
-                        
-                        self.multiclass_model = MockMulticlassModel().to(self.device)
-                        logger.warning("Using mock multiclass model that always predicts 'pothole'")
+                        logger.error(f"Error loading ViT model weights: {e}")
+                        raise
                     
-            except ImportError:
-                # If timm is not available, use a simple PyTorch model
-                logger.warning("timm not available, creating a simple binary classification model")
-                from torchvision import transforms
-                
-                class SimpleViTModel(torch.nn.Module):
-                    def __init__(self):
-                        super().__init__()
-                        self.linear = torch.nn.Linear(3 * 224 * 224, 1)  # Binary classification
+                    # Move model to device and set to evaluation mode
+                    self.vit_model.to(self.device)
+                    self.vit_model.eval()
                     
-                    def forward(self, x):
-                        batch_size = x.shape[0]
-                        x = x.view(batch_size, -1)  # Flatten the input
-                        return self.linear(x)
-                
-                self.vit_model = SimpleViTModel().to(self.device)
-                logger.warning("Using simple binary classification model")
-            
-            # Move model to device and set to evaluation mode
-            self.vit_model.to(self.device)
-            self.vit_model.eval()
+                    # Define transformation for ViT input
+                    from torchvision import transforms
+                    self.vit_transform = transforms.Compose([
+                        transforms.Resize((224, 224)),
+                        transforms.ToTensor(),
+                        transforms.Normalize([0.5]*3, [0.5]*3),
+                    ])
+                    
+                    logger.info("ViT model setup completed")
+                    
+                except ImportError:
+                    logger.error("timm package not found. Please install with: pip install timm")
+                    raise
+                except Exception as e:
+                    logger.error(f"Error loading ViT model: {e}")
+                    raise
+            else:
+                logger.warning("Skipping ViT model since YOLOv8 failed to load")
             
             # Define transformation for ViT input - EXACTLY as in Colab
             from torchvision import transforms
