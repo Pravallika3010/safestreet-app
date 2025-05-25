@@ -2,8 +2,9 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install minimal system dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
+    git \
     libgl1-mesa-glx \
     libglib2.0-0 \
     libsm6 \
