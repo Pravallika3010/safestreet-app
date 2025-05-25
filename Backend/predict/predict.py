@@ -54,72 +54,27 @@ class RoadDamageDetector:
         self._load_models()
     
     def _load_models(self):
-        """Load both YOLOv8 and ViT models"""
+        """Load models with optimized memory usage"""
         try:
-            # Load custom BB_MODEL1 for road damage detection
-            logger.info(f"Loading custom bounding box model from {BB_MODEL_PATH}")
-            try:
-                # Load the custom bounding box model
-                self.bb_model = torch.load(BB_MODEL_PATH, map_location=self.device)
-                self.bb_model.eval()  # Set to evaluation mode
-                logger.info("Custom bounding box model loaded successfully")
-            except Exception as e:
-                logger.error(f"Error loading custom bounding box model: {e}")
-                self.bb_model = None
-                logger.warning("Custom bounding box model could not be loaded")
-            
-            # Load YOLOv8 model as backup for object detection
+            # Load YOLOv8 model first
             logger.info(f"Loading YOLOv8 model from {YOLO_MODEL_PATH}")
             try:
                 # Try using YOLO's recommended import method
                 from ultralytics import YOLO
                 self.yolo_model = YOLO(YOLO_MODEL_PATH)
                 logger.info("YOLOv8 model loaded successfully")
-            except ImportError:
-                logger.warning("Ultralytics package not found. Please install with: pip install ultralytics")
-                # For testing purposes, create a mock model that returns empty results
+            except Exception as e:
+                logger.error(f"Error loading YOLOv8 model: {e}")
                 self.yolo_model = None
-                logger.warning("Using mock YOLO model for testing")
+                logger.warning("YOLOv8 model could not be loaded")
             
-            # Load ViT model for classification - EXACTLY as in Colab
-            logger.info(f"Loading ViT model from {VIT_MODEL_PATH}")
-            
-            # Create a simple binary classification model for road/not-road
-            try:
-                # Try to use timm like in Colab
-                import timm
-                logger.info("Using timm to create ViT model with 1 output class for binary classification")
-                
-                # Create the EXACT same model as in Colab (vit_base_patch16_224 with 1 output)
-                self.vit_model = timm.create_model('vit_base_patch16_224', pretrained=False, num_classes=1)
-                
+            # Load ViT model only if YOLOv8 was loaded successfully
+            if self.yolo_model:
+                logger.info(f"Loading ViT model from {VIT_MODEL_PATH}")
                 try:
-                    # Load the state dict
-                    logger.info(f"Loading model weights from {VIT_MODEL_PATH}")
-                    self.vit_model.load_state_dict(torch.load(VIT_MODEL_PATH, map_location=self.device))
-                    logger.info("Successfully loaded ViT model weights")
-                except Exception as e:
-                    logger.error(f"Error loading model weights: {e}")
-                    
-                    # Create a mock model for testing if loading fails
-                    logger.warning("Creating a mock ViT model for testing")
-                    class MockViTModel(torch.nn.Module):
-                        def __init__(self):
-                            super().__init__()
-                            self.linear = torch.nn.Linear(3 * 224 * 224, 1)  # Binary classification
-                        
-                        def forward(self, x):
-                            batch_size = x.shape[0]
-                            x = x.view(batch_size, -1)  # Flatten the input
-                            return self.linear(x)
-                    
-                    self.vit_model = MockViTModel().to(self.device)
-                    logger.warning("Using mock ViT model instead of trained model")
-                    
-                # Load multiclass model for damage type classification (pothole vs crack)
-                logger.info(f"Loading multiclass model from {MULTICLASS_MODEL_PATH}")
-                
-                # Check if the multiclass model file exists
+                    import timm
+                    logger.info("Using timm to create ViT model with 1 output class")
+                    self.vit_model = timm.create_model('vit_base_patch16_224', pretrained=False, num_classes=1)
                 if not MULTICLASS_MODEL_PATH.exists():
                     logger.warning(f"Multiclass model file not found at {MULTICLASS_MODEL_PATH}")
                     logger.warning("Creating a mock multiclass model for testing")
