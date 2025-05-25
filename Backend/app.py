@@ -24,20 +24,42 @@ import jwt
 # Import the road damage detection model
 import sys
 import os
+import signal
+import atexit
+
 # Make predict directory visible to Python
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Import our prediction module
 from predict.predict import predict, get_detector, RoadDamageDetector
 
-# Initialize the road damage detector only when needed
-def get_detector_instance():
-    if not hasattr(get_detector_instance, 'instance'):
-        get_detector_instance.instance = get_detector()
-        print("Road damage detector initialized successfully")
-    return get_detector_instance.instance
-
-# Lazy initialization - detector will be loaded on first request
+# Global detector instance
 road_damage_detector = None
+
+def initialize_detector():
+    """Initialize the detector in a worker-safe way"""
+    global road_damage_detector
+    if road_damage_detector is None:
+        road_damage_detector = get_detector()
+        print("Road damage detector initialized successfully")
+
+def cleanup():
+    """Cleanup function called on exit"""
+    print("Cleaning up resources...")
+    # Add any cleanup code here if needed
+
+# Register cleanup function
+atexit.register(cleanup)
+
+# Handle SIGTERM gracefully
+def handle_sigterm(signum, frame):
+    print("Received SIGTERM, shutting down gracefully...")
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
+
+# Initialize detector only in main process
+if __name__ == '__main__':
+    initialize_detector()
 
 # Load environment variables
 load_dotenv()
@@ -1215,4 +1237,11 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     host = os.environ.get('HOST', '0.0.0.0')
     print(f"Starting server on {host}:{port}")
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        import signal
+        def signal_handler(sig, frame):
+            print('Received signal to terminate. Goodbye!')
+            sys.exit(0)
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
     app.run(host=host, port=port, debug=False)
