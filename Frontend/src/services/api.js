@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-// Use relative URL to work with the proxy in package.json
-const API_URL = '/api';
+// Use environment variable for API URL
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? process.env.REACT_APP_API_URL || 'https://safestreet-backend.onrender.com'
+  : '/api';
 
 const api = axios.create({
   baseURL: API_URL,
