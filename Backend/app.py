@@ -658,6 +658,23 @@ def test_login():
         print(f"Error in test login: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+# Add test endpoint
+@app.route('/test', methods=['GET'])
+def test_endpoint():
+    return jsonify({
+        "status": "success",
+        "message": "Test endpoint is working",
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+# Add health check endpoint
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
 # Add endpoint to get user's images
 @app.route('/api/images/user', methods=['GET'])
 @token_required
